@@ -1,0 +1,85 @@
+Intro:The Main aim of this topic is to relate performance testing.Few of us using locust tool for load testing and measuring the transaction.
+
+But we observe the results either from logs/some html file of locust.Meanwhile we can observe same on grafana but we cant compare both at same time so planned to bring the locust application to show in grafana dashboard as it reduces time .
+
+Two Approches :
+
+There are few ways to add locust metrics into grafana by adding it as a datasource
+
+1.Postgres
+
+2.Prometheus
+
+Postgres:
+
+locust-plugins enables you to log Locust's results to a Postgres/Timescale database and to analyze them using Grafana in real time, or after the test has completed.
+
+The dashboards provide a good overview as well as the ability to drill down, as each request is logged individually. It also logs important run events (number of active users, ramp up finished etc) as well as aggregated results after the test has finished. Because the data is persisted, you can also track any changes in the performance of your system over time.
+
+Because Timescale is queried using regular SQL it is relatively straightforward make your own custom dashboards or edit the existing ones. You can even calculate your own completely custom metrics (e.g. number of requests above a certain response time threshold).
+
+Refer locust_plugin link:https://github.com/SvenskaSpel/locust-plugins/tree/master/locust_plugins/dashboards
+
+Setup:
+
+1.Install locust plugin :pip install locust-plugins
+
+2.Install docker composed timescale and postgres
+
+docker pull timescale/timescaledb-ha:pg14-latest
+
+3.Install Grafana dashboard and add postgres as your data source
+
+curl -u "admin:admin" http://10.33.127.50:3000/api/datasources -XPOST -H "Accept: application/json" -H "Content-Type: application/json" -d '{"access": "proxy","basicAuth": false,"basicAuthPassword": "","basicAuthUser": "","database": "postgres","isDefault": false,"jsonData": {"postgresVersion": 1200,"sslmode": "disable", "timescaledb": true},"name": "'locust_timescale'","orgId": 1,"password": "","readOnly": false,"secureJsonData": {"password": "12345"},"type": "postgres","url": "localhost:5432","user": "postgres","version": 3,"withCredentials": false}'
+
+4.Set postgres environment variables(PGHOST, PGPORT, PGUSER, PGPASSWORD) and timescal variable (LOCUST_TIMESCALE=1).sh file and execute . ./file_name.sh
+
+Postgres:
+
+https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-20-04
+
+Install grafana:
+
+ https://www.vultr.com/docs/install-grafana-on-ubuntu-20-04/?utm_source=performance-max-apac&utm_medium=paidmedia&obility_id=16876059738&utm_adgroup=&utm_campaign=&utm_term=&utm_content=&gclid=CjwKCAjw7p6aBhBiEiwA83fGuhQTApKqdILNSN9V4T8EJSz6HJaaedAnaBcWgCWPovreds5fvVIWuhoCCIEQAvD_BwE
+
+Timescale db:
+
+https://quicknotepadtutorial.blogspot.com/2020/12/how-to-install-timescaledb-on-ubuntu.htm
+
+Locust Dashboards:
+
+Execute sql script:
+
+Get the sql file from https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/dashboards/locust-timescale/timescale_schema.sql 
+
+psql -h localhost -d postgres -U postgres -p 5432 -a -q -f timescale_schema.sql
+
+Execute locust script:
+
+Get the Py file from https://github-lvs.corpzone.internalzone.com/newco/edr_perf
+
+./run_locust_plugin.sh -u 3 -r 1 -t 1m -w 1 -f hs.py -e lowerint.cfg -a sgw
+
+ 
+
+2.Prometheus as a datasource:
+
+We are using locust exporter for prometheus
+
+Clone the repo https://github.com/ContainerSolutions/locust_exporter
+
+Run the locust_reporter
+
+docker run --net=host containersol/locust_exporter
+Then, all the metrics will be available under http://localhost:9646/metrics
+
+There is only one thing that you have to add in the /etc/prometheus/prometheus.yml file under the scrape_configs section.
+
+- job_name: "locust"
+    scrape_interval: 2s
+    static_configs:
+      - targets: ["localhost:9646"]
+Upload json into grafana https://github.com/ContainerSolutions/locust_exporter/blob/main/locust_dashboard.json
+Refer :https://pperzyna.com/blog/how-to-move-metrics-from-locust_io-to-grafana-via-prometheus/
+Locust dashboard:
+  
